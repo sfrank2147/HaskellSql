@@ -1,6 +1,10 @@
 module SqlParser
 (
-    ParsedSqlCommand (ParsedSelectSqlCommand, sfields, stable, ParsedInsertSqlCommand, itable, ivalues),
+    ParsedSqlCommand (
+        ParsedSelectSqlCommand, sfields, stable,
+        ParsedInsertSqlCommand, itable, ivalues,
+        ParsedCreateSqlCommand, ctable, cschema, ccols
+    ),
     SqlValue (SqlInt, SqlString),
     SqlValueType (SqlIntType, SqlStringType)
     --parseCommand,
@@ -9,14 +13,16 @@ module SqlParser
 import Data.List
 import Data.List.Split
 
-data SqlValueType = SqlIntType | SqlStringType deriving (Enum, Show, Read)
+data SqlValueType = SqlIntType | SqlStringType deriving (Enum, Read, Show)
 
 data SqlValue = SqlInt Int | SqlString String
 instance Show SqlValue where
     show (SqlInt i) = show i
     show (SqlString s) = show s
 
-data ParsedSqlCommand = ParsedSelectSqlCommand { sfields :: [String], stable :: String } | ParsedInsertSqlCommand { itable :: String, ivalues :: [SqlValue] } | ParsedCreateSqlCommand { ctable :: String, schema :: [()]} deriving (Show)
+data ParsedSqlCommand = ParsedSelectSqlCommand { sfields :: [String], stable :: String } |
+                        ParsedInsertSqlCommand { itable :: String, ivalues :: [SqlValue] } |
+                        ParsedCreateSqlCommand { ctable :: String, cschema :: [SqlValueType], ccols :: [String]} deriving (Show)
 
 --parseTableForSelect :: String -> Maybe String
 --parseTableForSelect c =

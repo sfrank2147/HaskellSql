@@ -31,12 +31,25 @@ parseSelect = do
 
 parseInsert :: IO ParsedSqlCommand
 parseInsert = do
-    printPrompt "Table: "
+    printPrompt "Table name: "
     table <- getLine
     printPrompt "Values (comma-separated with no spaces): "
     valuesString <- getLine
     let values = map SqlString $ splitOn "," valuesString  -- For now only support strings.
     return ParsedInsertSqlCommand {itable = table, ivalues = values}
+
+parseCreate :: IO ParsedSqlCommand
+parseCreate = do
+    printPrompt "Table name: "
+    table <- getLine
+    printPrompt "Schema (comma-separate with no spaces, possible values are INT and STRING): "
+    schemaString <- getLine
+    let schema = map stringToValueType $ splitOn "," schemaString
+    printPrompt "Column names (comma-separated with no spaces): "
+    colNames <- getLine
+    let cols = splitOn "," colNames
+    return ParsedCreateSqlCommand { ctable=table, cschema=schema, ccols=cols }
+  where stringToValueType s = if s == "INT" then SqlIntType else SqlStringType
 
 parseQueryType :: String -> IO (Maybe ParsedSqlCommand)
 parseQueryType "SELECT" = do
@@ -45,11 +58,14 @@ parseQueryType "SELECT" = do
 parseQueryType "INSERT" = do
     c <- parseInsert
     return (Just c)
+parseQueryType "CREATE" = do
+    c <- parseCreate
+    return (Just c)
 parseQueryType _ = (return Nothing)
 
 parseEntry :: IO (Maybe ParsedSqlCommand)
 parseEntry = do
-    printPrompt "Type of query (SELECT, INSERT): "
+    printPrompt "Type of query (SELECT, INSERT, CREATE): "
     queryType <- getLine
     parsedCommand <- parseQueryType queryType
     return parsedCommand
@@ -57,5 +73,6 @@ parseEntry = do
 main :: IO ()
 main = do
     parsedCommand <- parseEntry
-    if isJust parsedCommand then executeSqlCommand (fromJust parsedCommand) else return SqlResult {status="Failure", resultRows=[]}
+    result <- if isJust parsedCommand then executeSqlCommand (fromJust parsedCommand) else return SqlResult {status="Failure", resultRows=[]}
     putStrLn $ show parsedCommand
+    putStrLn $ show result
