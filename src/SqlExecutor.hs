@@ -10,6 +10,7 @@ import SqlParser
 import Data.List.Split
 
 import Data.List
+import Data.Maybe
 import System.Directory
 import System.Environment
 
@@ -22,16 +23,25 @@ executeSqlCommand (ParsedSelectSqlCommand fs ts) = executeSelectCommand (ParsedS
 executeSqlCommand (ParsedInsertSqlCommand ts vs) = executeInsertCommand (ParsedInsertSqlCommand ts vs)
 executeSqlCommand (ParsedCreateSqlCommand t s cs) = executeCreateCommand (ParsedCreateSqlCommand t s cs)
 
-parseToSqlRow :: String -> SqlRow
-parseToSqlRow r = SqlRow $ map (SqlString . read) $ splitOn "," r
+getIndex :: [String] -> String -> Maybe Int
+-- Get the index of the field from the list of column names.
+getIndex = flip elemIndex
+
+parseToSqlRow :: [String] -> [String] -> String -> SqlRow
+parseToSqlRow fieldsToSelect colNames r =
+    let rowEntries = splitOn "," r
+        indexes = map fromJust $ filter isJust $ map (getIndex colNames) fieldsToSelect
+        rowsToShow = if "*" `elem` fieldsToSelect then rowEntries else map (\idx -> rowEntries !! idx) indexes
+    in SqlRow $ map (SqlString . read) rowsToShow
 
 executeSelectCommand :: ParsedSqlCommand -> IO SqlResult
 -- For now, just select everything and make strings
 executeSelectCommand psc = do
     let pathName = "tables/" ++ stable psc
+    let fields = sfields psc
     fileContents <- readFile pathName
-    let name:schema:colnames:rs = lines fileContents
-    return SqlResult { status="Success", resultRows=(map parseToSqlRow rs)}
+    let name:schema:colNames:rs = lines fileContents
+    return SqlResult { status="Success", resultRows=(map (parseToSqlRow fields (splitOn "," colNames)) rs)}
 
 executeInsertCommand :: ParsedSqlCommand -> IO SqlResult
 executeInsertCommand pic = do

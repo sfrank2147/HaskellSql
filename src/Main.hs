@@ -22,11 +22,11 @@ printPrompt p = putStr p >> hFlush stdout
 
 parseSelect :: IO ParsedSqlCommand
 parseSelect = do
+    printPrompt "Table: "
+    table <- getLine
     printPrompt "Fields (comma-separated with no spaces): "
     fieldString <- getLine
     let fields = splitOn "," fieldString
-    printPrompt "Table: "
-    table <- getLine
     return ParsedSelectSqlCommand {sfields = fields, stable = table}
 
 parseInsert :: IO ParsedSqlCommand
