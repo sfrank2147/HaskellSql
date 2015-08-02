@@ -3,6 +3,7 @@ module SqlExecutor
     SqlResult (SqlResult, status, resultRows),
     SqlRow,
     executeSqlCommand,
+    getSchemaForTable
 ) where
 
 import SqlParser
@@ -13,6 +14,7 @@ import Data.List
 import Data.Maybe
 import System.Directory
 import System.Environment
+import qualified System.IO.Strict as Strict
 
 data SqlRow = SqlRow [SqlValue] deriving (Show)
 data SqlTable = SqlTable { name :: String, schema :: [SqlValueType], colNames :: [String], tableRows :: [SqlRow]}
@@ -27,21 +29,34 @@ getIndex :: [String] -> String -> Maybe Int
 -- Get the index of the field from the list of column names.
 getIndex = flip elemIndex
 
-parseToSqlRow :: [String] -> [String] -> String -> SqlRow
-parseToSqlRow fieldsToSelect colNames r =
+getSqlValue :: [String] -> [String] -> Int -> SqlValue
+getSqlValue rowEntries schemaList idx =
+    let valString = rowEntries !! idx
+        valType = read (schemaList !! idx)
+    in toSqlValue valString valType
+ where
+    toSqlValue s SqlIntType = SqlInt (read s)
+    toSqlValue s SqlStringType = SqlString (read s)
+
+parseToSqlRow :: [String] -> [String] -> [String] -> String -> SqlRow
+parseToSqlRow fieldsToSelect colNames schemaList r =
     let rowEntries = splitOn "," r
-        indexes = map fromJust $ filter isJust $ map (getIndex colNames) fieldsToSelect
-        rowsToShow = if "*" `elem` fieldsToSelect then rowEntries else map (\idx -> rowEntries !! idx) indexes
-    in SqlRow $ map (SqlString . read) rowsToShow
+        indexes = if "*" `elem` fieldsToSelect
+            then [0..((length rowEntries) - 1)]
+            else map fromJust $ filter isJust $ map (getIndex colNames) fieldsToSelect
+        vals = map (getSqlValue rowEntries schemaList) indexes
+    in SqlRow vals
 
 executeSelectCommand :: ParsedSqlCommand -> IO SqlResult
 -- For now, just select everything and make strings
 executeSelectCommand psc = do
     let pathName = "tables/" ++ stable psc
     let fields = sfields psc
-    fileContents <- readFile pathName
+    fileContents <- Strict.readFile pathName
     let name:schema:colNames:rs = lines fileContents
-    return SqlResult { status="Success", resultRows=(map (parseToSqlRow fields (splitOn "," colNames)) rs)}
+    let schemaList = splitOn "," schema
+    let colList = splitOn "," colNames
+    return SqlResult { status="Success", resultRows=(map (parseToSqlRow fields colList schemaList) rs)}
 
 executeInsertCommand :: ParsedSqlCommand -> IO SqlResult
 executeInsertCommand pic = do
@@ -99,3 +114,10 @@ parseTable :: String -> SqlTable
 parseTable s =
     let n:s:cs:rs = splitOn "\n" s
     in SqlTable {name=n, schema=(parseSchema s), colNames=(parseColNames cs), tableRows=(map parseRow rs)}
+
+getSchemaForTable :: String -> IO [SqlValueType]
+getSchemaForTable s = do
+    let pathName = "tables/" ++ s
+    fileContents <- Strict.readFile pathName
+    let n:schema:c:rs = lines fileContents
+    return (map read $ splitOn "," schema)

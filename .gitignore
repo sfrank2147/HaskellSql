@@ -1,2 +1,3 @@
 dist/
 tables/
+.cabal-sandbox/

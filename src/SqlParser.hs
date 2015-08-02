@@ -13,7 +13,7 @@ module SqlParser
 import Data.List
 import Data.List.Split
 
-data SqlValueType = SqlIntType | SqlStringType deriving (Enum, Read, Show)
+data SqlValueType = SqlIntType | SqlStringType deriving (Enum, Read, Show, Eq)
 
 data SqlValue = SqlInt Int | SqlString String
 instance Show SqlValue where

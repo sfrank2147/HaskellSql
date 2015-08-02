@@ -35,8 +35,11 @@ parseInsert = do
     table <- getLine
     printPrompt "Values (comma-separated with no spaces): "
     valuesString <- getLine
-    let values = map SqlString $ splitOn "," valuesString  -- For now only support strings.
+    schema <- getSchemaForTable table
+    let valuesList = splitOn "," valuesString
+    let values = map (\idx -> stringToSqlValue (schema !! idx) (valuesList !! idx)) [0..(length schema - 1)]
     return ParsedInsertSqlCommand {itable = table, ivalues = values}
+  where stringToSqlValue t s = (if t == SqlIntType then SqlInt (read s) else SqlString s)
 
 parseCreate :: IO ParsedSqlCommand
 parseCreate = do
