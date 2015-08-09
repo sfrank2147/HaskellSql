@@ -25,96 +25,6 @@ executeSqlCommand (ParsedSelectSqlCommand fs ts) = executeSelectCommand (ParsedS
 executeSqlCommand (ParsedInsertSqlCommand ts vs) = executeInsertCommand (ParsedInsertSqlCommand ts vs)
 executeSqlCommand (ParsedCreateSqlCommand t s cs) = executeCreateCommand (ParsedCreateSqlCommand t s cs)
 
---getSqlValue :: [String] -> [String] -> Int -> SqlValue
---getSqlValue rowEntries schemaList idx =
---    let valString = rowEntries !! idx
---        valType = read (schemaList !! idx)
---    in toSqlValue valString valType
--- where
---    toSqlValue s SqlIntType = SqlInt (read s)
---    toSqlValue s SqlStringType = SqlString (read s)
-
---parseToSqlRow :: [String] -> [String] -> [String] -> String -> SqlRow
---parseToSqlRow fieldsToSelect colNames schemaList r =
---    let rowEntries = splitOn "," r
---        indexes = if "*" `elem` fieldsToSelect
---            then [0..((length rowEntries) - 1)]
---            else map fromJust $ filter isJust $ map (getIndex colNames) fieldsToSelect
---        vals = map (getSqlValue rowEntries schemaList) indexes
---    in SqlRow vals
-
---executeSelectCommand :: ParsedSqlCommand -> IO SqlResult
----- For now, just select everything and make strings
---executeSelectCommand psc = do
---    let pathName = "tables/" ++ stable psc
---    let fields = sfields psc
---    fileContents <- Strict.readFile pathName
---    let name:schema:colNames:rs = lines fileContents
---    let schemaList = splitOn "," schema
---    let colList = splitOn "," colNames
---    return SqlResult { status="Success", resultRows=(map (parseToSqlRow fields colList schemaList) rs)}
-
---executeInsertCommand :: ParsedSqlCommand -> IO SqlResult
---executeInsertCommand pic = do
---    let pathName = "tables/" ++ itable pic
---    appendFile pathName $ (intercalate "," $ map show (ivalues pic)) ++ "\n"
---    return SqlResult { status="Success", resultRows=[] }
-
---executeCreateCommand :: ParsedSqlCommand -> IO SqlResult
---executeCreateCommand pcc = do
---    createDirectoryIfMissing True "tables"
---    let pathName = "tables/" ++ (ctable pcc)
---    writeFile pathName $ (ctable pcc) ++ "\n"
---    appendFile pathName $ (intercalate "," $ map show (cschema pcc)) ++ "\n"
---    appendFile pathName $ (intercalate "," (ccols pcc)) ++ "\n"
---    return SqlResult {status="Success", resultRows=[]}
-
--- To start: what's the simplest way to store everything?
--- The file stores a list of tables.
--- Each table stores a name, a list of types, a list of column names, a list of rows
--- In the absolute easiest incarnation, everything is in memory.
--- Creating a table adds to the table in the list.
--- But, it turns out inserting into the middle of a file is a pain in the ass.
--- New strategy: different file for each table, stored in a single folder.
--- Format is the same:
--- * first row, name of table
--- * second row, schema
--- * third row, names of columns
--- * subsequent rows are data rows
-
--- * How will reading the table go?
--- * Get the schema from the 2nd row.
--- * Get the column names from the third row
--- * For each subsequent row:
---    * Split the row into tokens (by comma)
---    * For each value asked for:
---        * Find the index of the value
---        * Find the type of that value from the schema
---        * Parse row[index] according to that type
-
---parseSchema :: String -> [SqlValueType]
---parseSchema sch =
---    let sqlTypeStrings = splitOn "," sch
---    in map read sqlTypeStrings
-
---parseColNames :: String -> [String]
---parseColNames = splitOn ","
-
---parseRow :: String -> SqlRow
---parseRow s =
---    let valStrings = splitOn "," s
---    in SqlRow (map SqlString valStrings)  -- For now, only support Strings
-
---getSchemaForTable :: String -> IO [SqlValueType]
---getSchemaForTable s = do
---    let pathName = "tables/" ++ s
---    fileContents <- Strict.readFile pathName
---    let n:schema:c:rs = lines fileContents
---    return (map read $ splitOn "," schema)
-
-
------------
-
 executeCreateCommand :: ParsedSqlCommand -> IO SqlResult
 executeCreateCommand pcc = do
     createDirectoryIfMissing True "tables"
@@ -166,9 +76,3 @@ executeSelectCommand psc = do
           resultTable=Nothing
         }
         else SqlResult { status="Success", resultTable=maybeTable }
-
-
-    --let name:schema:colNames:rs = lines fileContents
-    --let schemaList = splitOn "," schema
-    --let colList = splitOn "," colNames
-    --return SqlResult { status="Success", resultRows=(map (parseToSqlRow fields colList schemaList) rs)}

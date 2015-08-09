@@ -13,14 +13,6 @@ import Data.Strings
 import System.IO
 import qualified System.IO.Strict as Strict
 
---processEntry :: String -> IO String
---processEntry e =
---    let cs = filter (not . strNull) (splitOn ";" e)
---        parsedCommands = map parseCommand cs
---        resultsToPrint = map formatResult parsedCommands
---    in return (intercalate "\n" resultsToPrint)
---    where formatResult r = if isJust r then show r else "Invalid command."
-
 printPrompt :: String -> IO ()
 printPrompt p = putStr p >> hFlush stdout
 
