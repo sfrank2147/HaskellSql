@@ -1,13 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
+import SqlCommandParser
+import SqlExecutor
+import SqlTable
+
+import Control.Monad
 import Data.List
 import Data.List.Split
 import Data.Maybe
 import Data.Strings
-import SqlExecutor
-import SqlParser
 import System.IO
+import qualified System.IO.Strict as Strict
 
 --processEntry :: String -> IO String
 --processEntry e =
@@ -35,7 +39,9 @@ parseInsert = do
     table <- getLine
     printPrompt "Values (comma-separated with no spaces): "
     valuesString <- getLine
-    schema <- getSchemaForTable table
+    -- This needs to be refactored into the executor file
+    tableFileContents <- Strict.readFile ("tables/" ++ table)
+    let schema = fromJust $ parseSchemaForTable tableFileContents
     let valuesList = splitOn "," valuesString
     let values = map (\idx -> stringToSqlValue (schema !! idx) (valuesList !! idx)) [0..(length schema - 1)]
     return ParsedInsertSqlCommand {itable = table, ivalues = values}
@@ -76,6 +82,8 @@ parseEntry = do
 main :: IO ()
 main = do
     parsedCommand <- parseEntry
-    result <- if isJust parsedCommand then executeSqlCommand (fromJust parsedCommand) else return SqlResult {status="Failure", resultRows=[]}
-    putStrLn $ show parsedCommand
+    putStrLn $ "Parsed command:" ++ (show parsedCommand)
+    result <- if isJust parsedCommand
+        then executeSqlCommand (fromJust parsedCommand)
+        else return SqlResult {status="Failure", resultTable=Nothing}
     putStrLn $ show result
